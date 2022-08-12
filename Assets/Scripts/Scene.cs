@@ -35,14 +35,52 @@ public class Scene : MonoBehaviour
 
         // Image plane "corner" rays first (frustum edges).
         this.debug.Ray(new Ray(Vector3.zero, NormalizedImageToWorldCoord(0f, 0f)), Color.blue);
-        
+
         // Add more rays to visualise here...
+        this.debug.Ray(new Ray(Vector3.zero, NormalizedImageToWorldCoord(1f, 0f)), Color.blue);
+        this.debug.Ray(new Ray(Vector3.zero, NormalizedImageToWorldCoord(0f, 1f)), Color.blue);
+        this.debug.Ray(new Ray(Vector3.zero, NormalizedImageToWorldCoord(1f, 1f)), Color.blue);
+
+        for (var i = 0; i<this.image.Width; i++)
+            for (var j = 0; j<this.image.Height; j++)
+            {
+                this.debug.Ray(new Ray(Vector3.zero, NormalizedImageToWorldCoord( (i+0.5f) / this.image.Width, (j+0.5f) / this.image.Height)), Color.white);
+            }
+        
     }
 
     private void Render()
     {
         // Render the image here...
+        for (var y = 0; y < this.image.Height; y++)
+            for (var x = 0; x < this.image.Width; x++)
+            {
+                this.image.SetPixel(x, y, Color.black);
+
+                var ray = PixelRay(x, y);
+                RaycastHit? nearestHit = null;
+                foreach (var sceneEntity in FindObjectsOfType<SceneEntity>())
+                {
+                    var hit = sceneEntity.Intersect(ray);
+                    if (hit != null && (hit?.distance < nearestHit?.distance || nearestHit == null))
+                    {
+                        this.image.SetPixel(x, y, sceneEntity.Color());
+                        nearestHit = hit;
+                    }
+                }
+            }
     }
+
+    private Ray PixelRay(int x, int y)
+    {
+        var normX = (x + 0.5f) / this.image.Width;
+        var normY = (y + 0.5f) / this.image.Height;
+
+        var worldPixelCoord = NormalizedImageToWorldCoord(normX, normY);
+
+        return new Ray(Vector3.zero, worldPixelCoord);
+    }
+
 
     private Vector3 NormalizedImageToWorldCoord(float x, float y)
     {
@@ -51,6 +89,8 @@ public class Scene : MonoBehaviour
             this._imagePlaneHeight * (0.5f - y),
             1.0f); // Image plane is 1 unit from camera.
     }
+
+
 
     private void ComputeWorldImageBounds()
     {
